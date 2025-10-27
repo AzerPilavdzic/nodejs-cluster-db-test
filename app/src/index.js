@@ -5,9 +5,9 @@ const MONGO_URL = process.env.MONGO_URL || "mongodb://mongo:27017";
 const DB_NAME = process.env.DB_NAME || "tickerdb";
 const COLLECTION = process.env.COLLECTION_NAME || "ticks";
 const INTERVAL_MS = Number(process.env.INSERT_INTERVAL_MS || 5000);
-const CONNECT_RETRY_ATTEMPTS=process.env.CONNECT_RETRY_ATTEMPTS || 30;
+const CONNECT_RETRY_ATTEMPTS = process.env.CONNECT_RETRY_ATTEMPTS || 30;
 const DELAY_MS = process.DELAY_MS || 1000;
-const MAX_POOL_SIZE= process.env.MAX_POOL_SIZE || 5;
+const MAX_POOL_SIZE = process.env.MAX_POOL_SIZE || 5;
 
 let client;
 let timer;
@@ -47,9 +47,9 @@ async function start() {
       await col.insertOne(doc);
 
       console.log(`[Ticker] Inserted ${id}`);
-       console.log(`MONGO_URL: ${MONGO_URL}`);
-       console.log(`DB_NAME: ${DB_NAME}`);
-       console.log(`COLLECTION: ${COLLECTION}`);
+      console.log(`MONGO_URL: ${MONGO_URL}`);
+      console.log(`DB_NAME: ${DB_NAME}`);
+      console.log(`COLLECTION: ${COLLECTION}`);
     } catch (err) {
       console.error("[Ticker] Insert error:", err.message);
     }
@@ -59,7 +59,7 @@ async function start() {
 async function shutdown(signal) {
   console.log(`[Ticker] Received ${signal}. Shutting down...`);
   if (timer) clearInterval(timer);
-  if (client) await client.close().catch(() => {});
+  if (client) await client.close().catch(() => { });
   process.exit(0);
 }
 
