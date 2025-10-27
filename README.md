@@ -1,16 +1,39 @@
-# Node.js Cluster Database Test
+# Node – MongoDB Replica Set Demo
 
-This project demonstrates how to manage a **database cluster** with one **master** and two **slave** databases.  
-It automatically handles replication and failover — if the master node goes down, one of the slaves is promoted to master and continues serving requests.
+A simple Dockerized Node.js app that inserts a new document into a 5-node MongoDB replica set every second to demonstrate replication and automatic failover.
 
----
+## Run the project
 
-## Features
+```bash
+docker compose up
+```
 
-- Connects to a 3-node database cluster (1 master, 2 slaves)
-- Periodically inserts and reads data to verify replication
-- Detects database node failure
-- Promotes a slave to master when the current master becomes unavailable
-- Logs status and events to the console for monitoring
+The app will start inserting data into MongoDB once a PRIMARY node is elected.
 
----
+DB_NAME = `tickerdb`
+
+COLLECTION = `ticks`
+
+## Show last 5 inserted data
+```
+docker exec -it mongo1 mongosh \
+  "mongodb://mongo1:27017,mongo2:27017,mongo3:27017,mongo4:27017,mongo5:27017/?replicaSet=rs0" \
+  --eval 'db.getSiblingDB("tickerdb").ticks.find().sort({createdAt:-1}).limit(5).pretty()'
+```
+
+## Test failover
+
+Stop the current primary (e.g., mongo1) and watch another node take over:
+
+```bash
+docker stop mongo1
+docker exec -it mongo2 mongosh --eval 'rs.status().members.map(m=>({name:m.name,stateStr:m.stateStr}))'
+```
+
+The Node.js app will keep inserting automatically into the new PRIMARY.
+
+## Remove all data and replica-set config (clean reset)
+
+```bash
+docker compose down -v
+```
