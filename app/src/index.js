@@ -33,9 +33,7 @@ async function start() {
 
   await col.createIndex({ createdAt: -1 });
 
-  console.log(
-    `[Ticker] Connected. Inserting into ${DB_NAME}.${COLLECTION} every ${INTERVAL_MS}ms`
-  );
+  console.log(`[Ticker] Connected. Inserting into ${DB_NAME}.${COLLECTION} every ${INTERVAL_MS}ms`);
 
   timer = setInterval(async () => {
     try {
@@ -47,9 +45,9 @@ async function start() {
       await col.insertOne(doc);
 
       console.log(`[Ticker] Inserted ${id}`);
-      console.log(`MONGO_URL: ${MONGO_URL}`);
-      console.log(`DB_NAME: ${DB_NAME}`);
-      console.log(`COLLECTION: ${COLLECTION}`);
+      console.log(`[MONGO_URL]: ${MONGO_URL}`);
+      console.log(`[DB_NAME]: ${DB_NAME}`); // `tickerdb`
+      console.log(`[COLLECTION]: ${COLLECTION}`);//`ticks`
     } catch (err) {
       console.error("[Ticker] Insert error:", err.message);
     }

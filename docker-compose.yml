@@ -74,7 +74,6 @@ services:
       retries: 20
     restart: unless-stopped
 
-  # One-off init job: waits for mongo1 to be reachable, then initiates the replica set
   rs-init:
     image: mongo:7
     depends_on:
