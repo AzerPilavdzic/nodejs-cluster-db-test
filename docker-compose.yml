@@ -1,0 +1,146 @@
+# version: "3.8"
+
+# services:
+#   mongo:
+#     image: mongo:7
+#     container_name: mongo
+#     ports:
+#       - "27017:27017"
+#     volumes:
+#       - mongo_data:/data/db
+#     healthcheck:
+#       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+#       interval: 5s
+#       timeout: 3s
+#       retries: 10
+#     restart: unless-stopped
+
+#   app:
+#     build: ./app
+#     container_name: ticker-app
+#     environment:
+#       # change these if you like
+#       MONGO_URL: mongodb://mongo:27017
+#       DB_NAME: tickerdb
+#       COLLECTION_NAME: ticks
+#       INSERT_INTERVAL_MS: "1000"
+#     depends_on:
+#       mongo:
+#         condition: service_healthy
+#     restart: unless-stopped
+
+# volumes:
+#   mongo_data:
+
+
+
+
+###############################################################################################################################
+
+
+version: "3.8"
+
+services:
+  mongo1:
+    image: mongo:7
+    container_name: mongo1
+    hostname: mongo1
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27017:27017"   # expose just one for Compass (others stay internal)
+    volumes:
+      - mongo1_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--host", "mongo1", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  mongo2:
+    image: mongo:7
+    container_name: mongo2
+    hostname: mongo2
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    volumes:
+      - mongo2_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--host", "mongo2", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  mongo3:
+    image: mongo:7
+    container_name: mongo3
+    hostname: mongo3
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    volumes:
+      - mongo3_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--host", "mongo3", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  # One-off init job: waits for mongo1 to be reachable, then initiates the replica set
+  rs-init:
+    image: mongo:7
+    depends_on:
+      mongo1:
+        condition: service_healthy
+      mongo2:
+        condition: service_healthy
+      mongo3:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-lc"]
+    command: >
+      '
+      echo "Waiting for mongo1...";
+      until mongosh --quiet --host mongo1 --eval "db.adminCommand(\"ping\")" >/dev/null 2>&1; do sleep 1; done;
+
+      echo "Checking rs.status()...";
+      RS_STATE=$(mongosh --quiet --host mongo1 --eval "try { rs.status().ok } catch (e) { 0 }");
+      if [ "$RS_STATE" = "1" ]; then
+        echo "Replica set already initiated.";
+      else
+        echo "Initiating replica set...";
+        mongosh --quiet --host mongo1 --eval "
+          rs.initiate({
+            _id: \"rs0\",
+            members: [
+              { _id: 0, host: \"mongo1:27017\" },
+              { _id: 1, host: \"mongo2:27017\" },
+              { _id: 2, host: \"mongo3:27017\" }
+            ]
+          })
+        ";
+      fi
+
+      # Wait for a PRIMARY
+      echo "Waiting for PRIMARY election...";
+      until mongosh --quiet --host mongo1 --eval "rs.isMaster().ismaster" | grep -q true; do sleep 1; done;
+      echo "Replica set ready."
+      '
+    restart: "no"
+
+  app:
+    build: ./app
+    container_name: ticker-app
+    environment:
+      # Note multiple hosts + replicaSet
+      MONGO_URL: mongodb://mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0
+      DB_NAME: tickerdb
+      COLLECTION_NAME: ticks
+      INSERT_INTERVAL_MS: "1000"
+    depends_on:
+      rs-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  mongo1_data:
+  mongo2_data:
+  mongo3_data:
